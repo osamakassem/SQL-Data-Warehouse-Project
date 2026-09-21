@@ -1,0 +1,179 @@
+/*
+===============================================================================
+Create Database and Schemas
+===============================================================================
+Script Purpose:
+    This script creates a new database named 'DataWarehouse' after checking if it already exists.
+    If the database exists, it is dropped and recreated. Additionally, the script sets up three schemas
+    within the database: 'bronze', 'silver', and 'gold'.
+
+WARNING:
+    Running this script will drop the entire 'DataWarehouse' database if it exists.
+    All data in the database will be permanently deleted. Proceed with caution
+    and ensure you have proper backups before running this script.
+*/
+
+-- create stored procedure :
+CREATE or ALTER PROCEDURE Bronze.Load_bronze AS
+BEGIN
+DECLARE @start_Time datetime , @end_Time datetime
+ BeGIN TRY
+-- create tables :
+
+-- Create table from CRM system :
+if OBJECT_ID('Bronze.crm_cust_info' ,'U') IS NOT NULL
+Drop table Bronze.crm_cust_info ;
+
+create table Bronze.crm_cust_info (
+cst_id int ,
+cst_key nvarchar(50) ,
+cst_firstname nvarchar(50) ,
+cst_lastname nvarchar(50) ,
+cst_material_status nvarchar(50) ,
+cst_gndr nvarchar(50) ,
+cst_create_date date ) ;
+
+------------------------------------
+
+if OBJECT_ID('Bronze.crm_Prd_info' ,'U') IS NOT NULL
+Drop table Bronze.crm_Prd_info ;
+
+create table Bronze.crm_Prd_info (
+prd_id int ,
+prd_key nvarchar(50) ,
+prd_nm nvarchar(50) ,
+prd_Cost int ,
+prd_line nvarchar(50) ,
+prd_start_dt datetime ,
+prd_End_dt datetime) ;
+
+--------------------------------------
+
+if OBJECT_ID('Bronze.crm_Sales_details' ,'U') IS NOT NULL
+Drop table Bronze.crm_Sales_details ;
+
+create table Bronze.crm_Sales_details (
+sls_ord_num nvarchar(50) ,
+sls_prd_key nvarchar(50) ,
+sls_cst_id int ,
+sls_ord_dt int ,
+sls_ship_dt int , 
+sls_due_dt int ,
+sls_sales int ,
+sls_quantity int ,
+sls_price int ) ;
+
+-- Create tables from ERP system :
+
+if OBJECT_ID('Bronze.erp_cust_az12' ,'U') IS NOT NULL
+Drop table Bronze.erp_cust_az12 ;
+
+create table Bronze.erp_cust_az12 (
+ cid nvarchar(50) ,
+ bdate date ,
+ gen nvarchar(50)) ;
+
+ ----------------------------------------
+
+ if OBJECT_ID('Bronze.erp_loc_a101' ,'U') IS NOT NULL
+Drop table Bronze.erp_loc_a101 ;
+
+create table Bronze.erp_loc_a101 (
+ cid nvarchar(50) ,
+ cntry nvarchar(50)) ;
+
+ ------------------------------------------
+
+ if OBJECT_ID('Bronze.erp_PX_CAT_G1V2' ,'U') IS NOT NULL
+Drop table Bronze.erp_PX_CAT_G1V2 ;
+
+create table Bronze.erp_PX_CAT_G1V2 (
+ id nvarchar(50) ,
+ cat nvarchar(50),
+ sub_cat nvarchar(50),
+ maintrnance nvarchar(50)) ;
+
+ -- insert the data from CRM System into tables :
+
+ SET @start_Time = GETDATE() ;
+ Truncate table Bronze.crm_cust_info;
+ 
+ BULK INSERT Bronze.crm_cust_info
+FROM 'C:\Users\Administrator\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_crm\cust_info.csv'
+WITH (
+    FIRSTROW = 2,
+    FIELDTERMINATOR = ',',
+    TABLOCK
+);
+ SET @end_Time = GETDATE() ;
+print'>> Load Duration :' + Cast(Datediff(second , @start_Time , @end_Time ) as Nvarchar) + 'Seconds' ;
+
+-------------------------------------------------------------
+
+ Truncate table Bronze.crm_Prd_info;
+
+BULK INSERT Bronze.crm_Prd_info
+FROM 'C:\Users\Administrator\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_crm\Prd_info.csv'
+WITH (
+    FIRSTROW = 2,
+    FIELDTERMINATOR = ',',
+    TABLOCK
+) ;
+
+-----------------------------------------------------------------
+
+ Truncate table Bronze.crm_Sales_details;
+
+BULK INSERT Bronze.crm_Sales_details
+FROM 'C:\Users\Administrator\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_crm\Sales_details.csv'
+WITH (
+    FIRSTROW = 2,
+    FIELDTERMINATOR = ',',
+    TABLOCK
+);
+
+ -- insert the data from ERP System into tables :
+
+  Truncate table Bronze.erp_cust_az12;
+
+BULK INSERT Bronze.erp_cust_az12
+FROM 'C:\Users\Administrator\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_erp\cust_az12.csv'
+WITH (
+    FIRSTROW = 2,
+    FIELDTERMINATOR = ',',
+    TABLOCK
+);
+
+---------------------------------------------------------------------
+
+  Truncate table Bronze.erp_loc_a101;
+
+BULK INSERT Bronze.erp_loc_a101
+FROM 'C:\Users\Administrator\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_erp\loc_a101.csv'
+WITH (
+    FIRSTROW = 2,
+    FIELDTERMINATOR = ',',
+    TABLOCK
+);
+
+---------------------------------------------------------------------
+
+  Truncate table Bronze.erp_PX_CAT_G1V2;
+
+BULK INSERT Bronze.erp_PX_CAT_G1V2
+FROM 'C:\Users\Administrator\Downloads\sql-data-warehouse-project\sql-data-warehouse-project\datasets\source_erp\PX_CAT_G1V2.csv'
+WITH (
+    FIRSTROW = 2,
+    FIELDTERMINATOR = ',',
+    TABLOCK
+);
+ END TRY
+    BEGIN CATCH
+    print('====================================================================================================')
+    print 'ERROR Message' + ERROR_Message();
+    print 'ERROR Message' + cast( ERROR_Number() as nvarchar );
+    print 'ERROR Message' + cast( ERROR_State() as nvarchar );
+    print('====================================================================================================')
+
+    END CATCH 
+END ;
